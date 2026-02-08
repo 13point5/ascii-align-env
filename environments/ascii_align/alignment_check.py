@@ -1,66 +1,43 @@
-from typing import List, Dict
+from typing import Dict, List
 
 # Direction bitmask
 N, E, S, W = 1, 2, 4, 8
 
+ALLOWED_BOX_CHARS = {
+    "┌",
+    "┐",
+    "└",
+    "┘",
+    "─",
+    "│",
+    "├",
+    "┤",
+    "┬",
+    "┴",
+    "┼",
+}
+
+BOX_DRAWING_START = 0x2500
+BOX_DRAWING_END = 0x257F
+
 
 def build_dir_map():
     """
-    Map box-drawing characters to which directions they connect.
-    Extend this if your model uses additional characters.
+    Map allowed box-drawing characters to directional connectivity.
     """
-    m = {}
-
-    # Single-line box drawing
-    m.update(
-        {
-            "┌": E | S,
-            "┐": W | S,
-            "└": E | N,
-            "┘": W | N,
-            "─": E | W,
-            "│": N | S,
-            "├": N | E | S,
-            "┤": N | W | S,
-            "┬": E | W | S,
-            "┴": E | W | N,
-            "┼": N | E | S | W,
-            # Rounded corners
-            "╭": E | S,
-            "╮": W | S,
-            "╰": E | N,
-            "╯": W | N,
-        }
-    )
-
-    # Double-line box drawing
-    m.update(
-        {
-            "╔": E | S,
-            "╗": W | S,
-            "╚": E | N,
-            "╝": W | N,
-            "═": E | W,
-            "║": N | S,
-            "╠": N | E | S,
-            "╣": N | W | S,
-            "╦": E | W | S,
-            "╩": E | W | N,
-            "╬": N | E | S | W,
-        }
-    )
-
-    # ASCII fallback
-    m.update(
-        {
-            "+": N | E | S | W,  # treat as full junction (corner/intersection)
-            "-": E | W,
-            "=": E | W,
-            "|": N | S,
-        }
-    )
-
-    return m
+    return {
+        "┌": E | S,
+        "┐": W | S,
+        "└": E | N,
+        "┘": W | N,
+        "─": E | W,
+        "│": N | S,
+        "├": N | E | S,
+        "┤": N | W | S,
+        "┬": E | W | S,
+        "┴": E | W | N,
+        "┼": N | E | S | W,
+    }
 
 
 DIR_MAP = build_dir_map()
@@ -72,6 +49,23 @@ def strip_ansi(s: str) -> str:
 
     ansi = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
     return ansi.sub("", s)
+
+
+def find_disallowed_box_drawing_chars(diagram: str) -> set[str]:
+    """
+    Return any Unicode box-drawing chars not in the allowed structural set.
+    Non-box content chars are permitted.
+    """
+    cleaned = strip_ansi(diagram)
+    return {
+        ch
+        for ch in cleaned
+        if BOX_DRAWING_START <= ord(ch) <= BOX_DRAWING_END and ch not in ALLOWED_BOX_CHARS
+    }
+
+
+def has_disallowed_box_drawing_chars(diagram: str) -> bool:
+    return len(find_disallowed_box_drawing_chars(diagram)) > 0
 
 
 def normalize_grid(diagram: str) -> List[List[str]]:
@@ -135,24 +129,20 @@ def edge_col_ok(grid, c, r0, r1) -> bool:
     return True
 
 
-def is_tl(ch):  # top-left-like
-    d = dirs(ch)
-    return (d & E) and (d & S)
+def is_tl(ch):
+    return ch == "┌"
 
 
-def is_tr(ch):  # top-right-like
-    d = dirs(ch)
-    return (d & W) and (d & S)
+def is_tr(ch):
+    return ch == "┐"
 
 
-def is_bl(ch):  # bottom-left-like
-    d = dirs(ch)
-    return (d & E) and (d & N)
+def is_bl(ch):
+    return ch == "└"
 
 
-def is_br(ch):  # bottom-right-like
-    d = dirs(ch)
-    return (d & W) and (d & N)
+def is_br(ch):
+    return ch == "┘"
 
 
 def detect_misaligned(diagram: str, require_at_least_one_rect: bool = True) -> Dict[str, int]:
@@ -244,15 +234,6 @@ def _run_tests():
             "misaligned": False,
         },
         {
-            "name": "ok_ascii_box",
-            "diagram": """\
-+--------+
-| hello  |
-+--------+
-""",
-            "misaligned": False,
-        },
-        {
             "name": "ok_multi_boxes",
             "diagram": """\
 ┌─────────────────────────┐
@@ -267,13 +248,41 @@ def _run_tests():
             "misaligned": False,
         },
         {
-            "name": "bad_ascii_width_mismatch",
+            "name": "ok_multi_boxes_with_junction_bus",
             "diagram": """\
-+--------+
-| hello  |
-+---------+
+┌────────┐   ┌────────┐
+│ Box A  │   │ Box B  │
+└───┬────┘   └───┬────┘
+    │            │
+┌───┴────────────┴───┐
+│   Aggregator       │
+└────────────────────┘
 """,
-            "misaligned": True,
+            "misaligned": False,
+            "info": {"correct": 3, "misaligned": 0},
+        },
+        {
+            "name": "ok_nested_with_internal_junctions",
+            "diagram": """\
+┌────────────┐
+│ ┌──┬──┐    │
+│ │A │B │    │
+│ └──┴──┘    │
+└────────────┘
+""",
+            "misaligned": False,
+            "info": {"correct": 2, "misaligned": 0},
+        },
+        {
+            "name": "ok_branch_junction_not_corner",
+            "diagram": """\
+┌────┐
+│ A  │
+└─┬──┘
+  │
+  ▼
+""",
+            "misaligned": False,
         },
         {
             "name": "bad_nested_shifted_corner",
@@ -285,6 +294,30 @@ def _run_tests():
 └──────────────┘
 """,
             "misaligned": True,
+        },
+        {
+            "name": "bad_mixed_good_and_bad_side_by_side_boxes",
+            "diagram": """\
+┌──────────┐  ┌──────────┐
+│ Good A   │  │ Bad B    │
+└──────────┘  └─────────┘
+""",
+            "misaligned": True,
+            "info": {"correct": 1, "misaligned": 1},
+        },
+        {
+            "name": "bad_mixed_with_junction_bus_and_broken_sink",
+            "diagram": """\
+┌──────┐   ┌──────┐
+│ Src1 │   │ Src2 │
+└──┬───┘   └──┬───┘
+   │          │
+┌──┴──────────┴──┐
+│ Sink           │
+└───────────────┘
+""",
+            "misaligned": True,
+            "info": {"correct": 2, "misaligned": 1},
         },
         {
             "name": "bad_bottom_right_inset",
@@ -311,6 +344,14 @@ def _run_tests():
 """,
             "misaligned": True,
         },
+        {
+            "name": "bad_no_rectangle",
+            "diagram": """\
+just text
+and arrows ▼
+""",
+            "misaligned": True,
+        },
     ]
 
     for case in test_cases:
@@ -324,6 +365,42 @@ def _run_tests():
             assert info.get(key) == value, (
                 f"{case['name']}: expected info[{key}]={value} got {info.get(key)}"
             )
+
+    disallowed_cases = [
+        {
+            "name": "ok_only_allowed_box_chars",
+            "diagram": """\
+┌───┐
+│ A │
+└─┬─┘
+""",
+            "has_disallowed": False,
+        },
+        {
+            "name": "bad_rounded_corners",
+            "diagram": """\
+╭───╮
+│ A │
+╰───╯
+""",
+            "has_disallowed": True,
+        },
+        {
+            "name": "ok_content_symbols",
+            "diagram": """\
+┌─────────┐
+│ Ops#1!? │
+└─────────┘
+""",
+            "has_disallowed": False,
+        },
+    ]
+
+    for case in disallowed_cases:
+        has_disallowed = has_disallowed_box_drawing_chars(case["diagram"])
+        assert has_disallowed == case["has_disallowed"], (
+            f"{case['name']}: expected {case['has_disallowed']} got {has_disallowed}"
+        )
 
     print("ALL TESTS PASSED ✅")
 

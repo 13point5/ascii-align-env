@@ -1,0 +1,26 @@
+model = "PrimeIntellect/INTELLECT-3"
+max_steps = 200
+batch_size = 256
+rollouts_per_example = 8
+# trajectory_strategy = "interleaved"  # or "branching"
+# learning_rate = 1e-4
+# lora_alpha = 16
+# oversampling_factor = 2.0
+# max_async_level = 2
+# env_file = ["secrets.env"] # optional file(s) for keys/secrets
+
+[sampling]
+max_tokens = 5000
+
+[[env]]
+id = "13point5/ascii-align"
+
+[val]
+num_examples = 64
+rollouts_per_example = 1
+interval = 10
+
+[wandb]
+project = "ascii-align"
+name = "intellect-3-ascii-align"
+entity = "13point5-labs"

@@ -1,7 +1,7 @@
 [project]
 name = "ascii-align"
-description = "Your environment description here"
-tags = ["placeholder-tag", "train", "eval"]
+description = "Environment for checking ASCII diagram alignment"
+tags = ["single-turn", "diagramming", "eval"]
 version = "0.1.0"
 requires-python = ">=3.10"
 dependencies = [
