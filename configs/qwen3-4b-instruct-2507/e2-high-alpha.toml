@@ -1,12 +1,11 @@
-name = "ascii-e3-high-alpha"
-model = "PrimeIntellect/INTELLECT-3"
+name = "ascii-e2-high-alpha-qwen3-4b-instruct-2507"
+model = "Qwen/Qwen3-4B-Instruct-2507"
 max_steps = 300
 batch_size = 512
 rollouts_per_example = 16
 trajectory_strategy = "interleaved"
-# Hypothesis: more adaptation capacity; better hard-case alignment if stable.
 learning_rate = 1e-6
-lora_alpha = 32
+lora_alpha = 64
 
 [sampling]
 max_tokens = 5000
@@ -15,11 +14,11 @@ max_tokens = 5000
 id = "13point5/ascii-align"
 
 [val]
-num_examples = 64
-rollouts_per_example = 1
+num_examples = 32
+rollouts_per_example = 3
 interval = 10
 
 [wandb]
 project = "ascii-align"
-name = "ascii-e3-high-alpha"
+name = "ascii-e2-high-alpha-qwen3-4b-instruct-2507"
 entity = "13point5-labs"

@@ -11,7 +11,7 @@ oversampling_factor = 2.0
 max_async_level = 4
 
 [sampling]
-max_tokens = 1024
+max_tokens = 5000
 
 [[env]]
 id = "13point5/ascii-align"
