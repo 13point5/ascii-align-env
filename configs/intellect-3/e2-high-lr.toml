@@ -1,0 +1,25 @@
+name = "ascii-e2-high-lr"
+model = "PrimeIntellect/INTELLECT-3"
+max_steps = 300
+batch_size = 512
+rollouts_per_example = 16
+trajectory_strategy = "interleaved"
+# Hypothesis: faster early gains than control, but potentially noisier validation.
+learning_rate = 2e-6
+lora_alpha = 16
+
+[sampling]
+max_tokens = 1024
+
+[[env]]
+id = "13point5/ascii-align"
+
+[val]
+num_examples = 64
+rollouts_per_example = 1
+interval = 10
+
+[wandb]
+project = "ascii-align"
+name = "ascii-e2-high-lr"
+entity = "13point5-labs"

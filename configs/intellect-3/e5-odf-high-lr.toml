@@ -1,0 +1,35 @@
+name = "ascii-e5-odf-high-lr"
+model = "PrimeIntellect/INTELLECT-3"
+max_steps = 300
+batch_size = 512
+rollouts_per_example = 16
+trajectory_strategy = "interleaved"
+# Hypothesis: strongest exploration pressure, highest instability risk.
+learning_rate = 2e-6
+lora_alpha = 16
+oversampling_factor = 2.0
+max_async_level = 4
+
+[sampling]
+max_tokens = 1024
+
+[[env]]
+id = "13point5/ascii-align"
+
+[val]
+num_examples = 64
+rollouts_per_example = 1
+interval = 10
+
+[buffer]
+online_difficulty_filtering = true
+easy_threshold = 0.8
+hard_threshold = 0.2
+easy_fraction = 0.0
+hard_fraction = 0.0
+seed = 42
+
+[wandb]
+project = "ascii-align"
+name = "ascii-e5-odf-high-lr"
+entity = "13point5-labs"

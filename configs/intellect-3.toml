@@ -1,7 +1,7 @@
 model = "PrimeIntellect/INTELLECT-3"
-max_steps = 200
-batch_size = 256
-rollouts_per_example = 8
+max_steps = 300
+batch_size = 512
+rollouts_per_example = 16
 # trajectory_strategy = "interleaved"  # or "branching"
 # learning_rate = 1e-4
 # lora_alpha = 16
