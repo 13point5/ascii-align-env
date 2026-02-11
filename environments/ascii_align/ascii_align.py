@@ -52,7 +52,7 @@ def alignment_reward(completion) -> float:
         return 0.0
 
     stats = detect_misaligned(diagram)
-    correct = stats["correct"]
+    correct = stats["correct_rectangles"]
     misaligned = stats["misaligned"]
 
     total = correct + misaligned
