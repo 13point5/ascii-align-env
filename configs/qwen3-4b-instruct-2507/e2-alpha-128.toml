@@ -1,4 +1,4 @@
-name = "ascii-e2-high-alpha-qwen3-4b-instruct-2507"
+name = "ascii-e2-alpha-128-qwen3-4b-instruct-2507"
 model = "Qwen/Qwen3-4B-Instruct-2507"
 max_steps = 300
 batch_size = 512
@@ -20,5 +20,5 @@ interval = 10
 
 [wandb]
 project = "ascii-align"
-name = "ascii-e2-high-alpha-qwen3-4b-instruct-2507"
+name = "ascii-e2-alpha-128-qwen3-4b-instruct-2507"
 entity = "13point5-labs"
