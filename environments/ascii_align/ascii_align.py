@@ -43,15 +43,22 @@ def format_reward(completion) -> float:
     return 1.0
 
 
-def alignment_reward(completion) -> float:
+def _alignment_stats(completion) -> dict[str, int] | None:
     diagram = _extract_diagram(completion)
     if diagram is None:
-        return 0.0
+        return None
 
     if has_disallowed_box_drawing_chars(diagram):
+        return None
+
+    return detect_misaligned(diagram)
+
+
+def alignment_reward(completion) -> float:
+    stats = _alignment_stats(completion)
+    if stats is None:
         return 0.0
 
-    stats = detect_misaligned(diagram)
     correct = stats["correct_rectangles"]
     misaligned = stats["misaligned"]
 
@@ -60,6 +67,44 @@ def alignment_reward(completion) -> float:
         return 0.0
 
     return correct / total
+
+
+def _alignment_total(stats: dict[str, int] | None) -> float:
+    if stats is None:
+        return 0.0
+    correct = float(stats["correct_rectangles"])
+    misaligned = float(stats["misaligned"])
+    total = correct + misaligned
+    if total <= 0.0:
+        return 0.0
+    return total
+
+
+def _normalized_dimension(stats: dict[str, int] | None, key: str) -> float:
+    total = _alignment_total(stats)
+    if total <= 0.0:
+        return 0.0
+    return float(stats[key]) / total
+
+
+def rectangle_error_metric(completion) -> float:
+    stats = _alignment_stats(completion)
+    return _normalized_dimension(stats, "rectangle_errors")
+
+
+def connector_error_metric(completion) -> float:
+    stats = _alignment_stats(completion)
+    return _normalized_dimension(stats, "connector_errors")
+
+
+def arrow_error_metric(completion) -> float:
+    stats = _alignment_stats(completion)
+    return _normalized_dimension(stats, "arrow_errors")
+
+
+def misaligned_total_metric(completion) -> float:
+    stats = _alignment_stats(completion)
+    return _normalized_dimension(stats, "misaligned")
 
 
 def load_environment() -> vf.Environment:
@@ -82,7 +127,17 @@ def load_environment() -> vf.Environment:
     train_dataset = split["train"]
     eval_dataset = split["test"]
 
-    rubric = vf.Rubric(funcs=[format_reward, alignment_reward])
+    rubric = vf.Rubric(
+        funcs=[
+            format_reward,
+            alignment_reward,
+            rectangle_error_metric,
+            connector_error_metric,
+            arrow_error_metric,
+            misaligned_total_metric,
+        ],
+        weights=[1.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+    )
 
     return vf.SingleTurnEnv(
         dataset=train_dataset,

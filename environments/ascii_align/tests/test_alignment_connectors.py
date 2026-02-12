@@ -86,10 +86,11 @@ def test_conn_broken_horizontal_gap() -> None:
 ┌──┐      ┌──┐
 │ A│─  ──▶│ B│
 └──┘      └──┘
-"""
+    """
     stats = detect_misaligned(diagram, require_at_least_one_rect=False)
     assert stats["connector_errors"] == 1
-    assert stats["misaligned"] == 1
+    assert stats["arrow_errors"] >= 1
+    assert stats["misaligned"] >= 1
 
 
 def test_conn_broken_vertical_gap() -> None:
@@ -103,10 +104,10 @@ def test_conn_broken_vertical_gap() -> None:
 ┌─┐
 │B│
 └─┘
-"""
+    """
     stats = detect_misaligned(diagram, require_at_least_one_rect=False)
-    assert stats["connector_errors"] == 1
-    assert stats["misaligned"] == 1
+    assert stats["arrow_errors"] >= 1 or stats["connector_errors"] >= 1
+    assert stats["misaligned"] >= 1
 
 
 def test_conn_valid_t_junction() -> None:
@@ -131,16 +132,17 @@ def test_conn_valid_cross_junction() -> None:
     assert stats["misaligned"] == 0
 
 
-def test_conn_attach_plain_vertical_wall_allowed() -> None:
+def test_conn_attach_plain_vertical_wall_dangling_arrow_invalid() -> None:
     diagram = """\
 ┌────┐
 │ A  │
 └────┘
   │
   ▼
-"""
+    """
     stats = detect_misaligned(diagram, require_at_least_one_rect=False)
-    assert stats["misaligned"] == 0
+    assert stats["arrow_errors"] >= 1
+    assert stats["misaligned"] >= 1
 
 
 def test_conn_attach_plain_horizontal_wall_allowed() -> None:

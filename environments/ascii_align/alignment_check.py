@@ -25,8 +25,10 @@ BOX_DRAWING_END = 0x257F
 
 ARROW_INCOMING = {
     "▶": W,
+    "►": W,
     ">": W,
     "◀": E,
+    "◄": E,
     "<": E,
     "▲": S,
     "^": S,
@@ -34,7 +36,7 @@ ARROW_INCOMING = {
     "v": N,
 }
 
-UNICODE_ARROWS = {"▶", "◀", "▲", "▼"}
+UNICODE_ARROWS = {"▶", "►", "◀", "◄", "▲", "▼"}
 ASCII_ARROWS = {">", "<", "^", "v"}
 
 DIR_STEPS = {
@@ -173,50 +175,193 @@ def is_br(ch: str) -> bool:
     return ch == "┘"
 
 
-def _detect_rectangles(grid: List[List[str]]) -> tuple[int, int]:
-    """Return (correct_rectangles, rectangle_errors)."""
+@dataclass(frozen=True)
+class _Span:
+    row: int
+    c0: int
+    c1: int
+
+
+@dataclass(frozen=True)
+class _Box:
+    top_row: int
+    bottom_row: int
+    c0: int
+    c1: int
+
+
+def _find_spans(grid: List[List[str]], start: str, end: str) -> list[_Span]:
+    """Find row spans like ┌───┐ / └───┘ with a mutually connected top/bottom edge."""
+    spans: list[_Span] = []
     if not grid:
-        return (0, 0)
+        return spans
+
+    width = len(grid[0])
+    for r, row in enumerate(grid):
+        for c0 in range(width - 2):
+            if row[c0] != start:
+                continue
+            for c1 in range(c0 + 2, width):
+                if row[c1] != end:
+                    continue
+                if edge_row_ok(grid, r, c0, c1):
+                    spans.append(_Span(row=r, c0=c0, c1=c1))
+                    break
+    return spans
+
+
+def _validate_box(grid: List[List[str]], top: _Span, bottom: _Span) -> bool:
+    if (top.c0, top.c1) != (bottom.c0, bottom.c1):
+        return False
+    if bottom.row <= top.row + 1:
+        return False
+
+    c0, c1 = top.c0, top.c1
+    if not edge_row_ok(grid, top.row, c0, c1):
+        return False
+    if not edge_row_ok(grid, bottom.row, c0, c1):
+        return False
+    if not edge_col_ok(grid, c0, top.row, bottom.row):
+        return False
+    if not edge_col_ok(grid, c1, top.row, bottom.row):
+        return False
+    return True
+
+
+def _mark_box_perimeter(
+    cells: set[tuple[int, int]],
+    top_row: int,
+    bottom_row: int,
+    c0: int,
+    c1: int,
+) -> None:
+    for c in range(c0, c1 + 1):
+        cells.add((top_row, c))
+        cells.add((bottom_row, c))
+    for r in range(top_row, bottom_row + 1):
+        cells.add((r, c0))
+        cells.add((r, c1))
+
+
+def _count_residual_box_artifacts(
+    grid: List[List[str]],
+    consumed_box_cells: set[tuple[int, int]],
+) -> int:
+    """
+    Count leftover box-like structural fragments.
+
+    These are components with corner glyphs not used by validated rectangles.
+    """
+    if not grid:
+        return 0
 
     height = len(grid)
     width = len(grid[0])
+    corner_chars = {"┌", "┐", "└", "┘"}
+    visited: set[tuple[int, int]] = set()
 
-    # Find TL candidates: must connect right and down with mutual connectivity.
-    tls = []
+    def is_residual_struct(r: int, c: int) -> bool:
+        return grid[r][c] in DIR_MAP and (r, c) not in consumed_box_cells
+
+    errors = 0
     for r in range(height):
         for c in range(width):
-            if is_tl(grid[r][c]) and connected(grid, r, c, 0, 1) and connected(grid, r, c, 1, 0):
-                tls.append((r, c))
-
-    rectangles = 0
-    failed_tl = 0
-
-    for r0, c0 in tls:
-        closed = False
-
-        for c1 in range(c0 + 1, width):
-            if not is_tr(grid[r0][c1]):
-                continue
-            if not edge_row_ok(grid, r0, c0, c1):
+            if (r, c) in visited or not is_residual_struct(r, c):
                 continue
 
-            for r2 in range(r0 + 1, height):
-                if is_bl(grid[r2][c0]) and is_br(grid[r2][c1]):
-                    if (
-                        edge_col_ok(grid, c0, r0, r2)
-                        and edge_col_ok(grid, c1, r0, r2)
-                        and edge_row_ok(grid, r2, c0, c1)
-                    ):
-                        rectangles += 1
-                        closed = True
-                        break
-            if closed:
-                break
+            stack = [(r, c)]
+            visited.add((r, c))
+            has_top_corner = False
+            has_bottom_corner = False
 
-        if not closed:
-            failed_tl += 1
+            while stack:
+                rr, cc = stack.pop()
+                ch = grid[rr][cc]
+                if ch in {"┌", "┐"}:
+                    has_top_corner = True
+                if ch in {"└", "┘"}:
+                    has_bottom_corner = True
 
-    return (rectangles, failed_tl)
+                for dr in (-1, 0, 1):
+                    for dc in (-1, 0, 1):
+                        if dr == 0 and dc == 0:
+                            continue
+                        r2, c2 = rr + dr, cc + dc
+                        if not _in_bounds(grid, r2, c2):
+                            continue
+                        if (r2, c2) in visited or not is_residual_struct(r2, c2):
+                            continue
+                        visited.add((r2, c2))
+                        stack.append((r2, c2))
+
+            if has_top_corner and has_bottom_corner:
+                errors += 1
+
+    return errors
+
+
+def _detect_valid_boxes(grid: List[List[str]]) -> list[_Box]:
+    if not grid:
+        return []
+
+    top_spans = sorted(_find_spans(grid, "┌", "┐"), key=lambda s: (s.row, s.c0, s.c1))
+    bottom_spans = sorted(_find_spans(grid, "└", "┘"), key=lambda s: (s.row, s.c0, s.c1))
+    bottoms_by_key: dict[tuple[int, int], list[_Span]] = {}
+    for span in bottom_spans:
+        bottoms_by_key.setdefault((span.c0, span.c1), []).append(span)
+
+    used_bottoms: set[_Span] = set()
+    valid_boxes: list[_Box] = []
+
+    for top in top_spans:
+        candidates = bottoms_by_key.get((top.c0, top.c1), [])
+        chosen: _Span | None = None
+        for bottom in candidates:
+            if bottom in used_bottoms:
+                continue
+            if bottom.row <= top.row:
+                continue
+            chosen = bottom
+            break
+
+        if chosen is None:
+            continue
+
+        used_bottoms.add(chosen)
+        if _validate_box(grid, top, chosen):
+            valid_boxes.append(
+                _Box(top_row=top.row, bottom_row=chosen.row, c0=top.c0, c1=top.c1)
+            )
+
+    return valid_boxes
+
+
+def _detect_rectangles(
+    grid: List[List[str]],
+) -> tuple[int, int, set[tuple[int, int]], list[_Box]]:
+    """
+    Return:
+    - correct_rectangles
+    - rectangle_errors
+    - consumed_box_cells: perimeter cells that belong to validated rectangles
+    """
+    if not grid:
+        return (0, 0, set(), [])
+
+    valid_boxes = _detect_valid_boxes(grid)
+    consumed_box_cells: set[tuple[int, int]] = set()
+    for box in valid_boxes:
+        _mark_box_perimeter(
+            consumed_box_cells,
+            top_row=box.top_row,
+            bottom_row=box.bottom_row,
+            c0=box.c0,
+            c1=box.c1,
+        )
+
+    correct_rectangles = len(valid_boxes)
+    rectangle_errors = _count_residual_box_artifacts(grid, consumed_box_cells)
+    return (correct_rectangles, rectangle_errors, consumed_box_cells, valid_boxes)
 
 
 def _is_plain_wall_attachment(direction: int, neighbor_ch: str) -> bool:
@@ -523,38 +668,32 @@ def _count_connector_errors(grid: List[List[str]]) -> int:
         # Collapse opposite unresolved ends of the same gap into one component.
         uf.union((r, c), (r2, c2))
 
-    # Count one error per semantic connector component with any unresolved ports,
-    # excluding box-like malformed components (accounted by rectangle_errors).
+    # Count one error per semantic connector component with any unresolved ports.
     bad_components: set[tuple[int, int]] = set()
     component_chars: dict[tuple[int, int], set[str]] = {}
+    root_to_cells: dict[tuple[int, int], list[tuple[int, int]]] = {}
     for r, c in positions:
         root = uf.find((r, c))
         component_chars.setdefault(root, set()).add(grid[r][c])
+        root_to_cells.setdefault(root, []).append((r, c))
 
-    def is_box_like(root: tuple[int, int]) -> bool:
+    def _has_corner(root: tuple[int, int]) -> bool:
         chars = component_chars.get(root, set())
-        return chars.issubset({"┌", "┐", "└", "┘", "─", "│"}) and any(
-            ch in {"┌", "┐", "└", "┘"} for ch in chars
-        )
+        return any(ch in {"┌", "┐", "└", "┘"} for ch in chars)
 
     for r, c, direction in unresolved:
         if (r, c, direction) in paired_ports:
             continue
         root = uf.find((r, c))
-        if not is_box_like(root):
-            bad_components.add(root)
+        if _has_corner(root):
+            continue
+        bad_components.add(root)
 
     # Merge nearby bad components into one connector event.
     bad_roots = list(bad_components)
     if not bad_roots:
         bad_clusters = 0
     else:
-        comp_cells: dict[tuple[int, int], list[tuple[int, int]]] = {root: [] for root in bad_roots}
-        for r, c in positions:
-            root = uf.find((r, c))
-            if root in comp_cells:
-                comp_cells[root].append((r, c))
-
         seen: set[tuple[int, int]] = set()
         bad_clusters = 0
         for root in bad_roots:
@@ -569,8 +708,8 @@ def _count_connector_errors(grid: List[List[str]]) -> int:
                     if other in seen or other == cur:
                         continue
                     close = False
-                    for r1, c1 in comp_cells[cur]:
-                        for r2, c2 in comp_cells[other]:
+                    for r1, c1 in root_to_cells.get(cur, []):
+                        for r2, c2 in root_to_cells.get(other, []):
                             if abs(r1 - r2) <= 1 and abs(c1 - c2) <= 1:
                                 close = True
                                 break
@@ -585,7 +724,7 @@ def _count_connector_errors(grid: List[List[str]]) -> int:
         root = uf.find((r1, c1))
         if uf.find((r2, c2)) != root:
             continue
-        if is_box_like(root):
+        if _has_corner(root):
             continue
         gap_events.add(event)
 
@@ -654,6 +793,98 @@ def _count_arrow_only_connector_runs(grid: List[List[str]]) -> int:
     return errors
 
 
+def _arrow_outgoing_target_valid(grid: List[List[str]], r: int, c: int, arrow_ch: str) -> bool:
+    expected = ARROW_INCOMING[arrow_ch]
+    out_dir = _opposite(expected)
+    dr, dc = DIR_STEPS[out_dir]
+    r2, c2 = r + dr, c + dc
+
+    while _in_bounds(grid, r2, c2) and grid[r2][c2] == " ":
+        r2 += dr
+        c2 += dc
+
+    if not _in_bounds(grid, r2, c2):
+        return False
+
+    target = grid[r2][c2]
+    if target in DIR_MAP:
+        if dirs(target) & _opposite(out_dir):
+            return True
+        if _is_plain_wall_attachment(out_dir, target):
+            return True
+        return False
+
+    # Allow arrows pointing to non-structural labels/annotations.
+    return True
+
+
+def _arrow_source_is_anchored(grid: List[List[str]], r: int, c: int, incoming_dir: int) -> bool:
+    """
+    Trace the incoming shaft away from arrowhead and ensure it eventually anchors
+    to a structural endpoint (box wall/plain attachment or branching connector).
+    """
+    dr, dc = DIR_STEPS[incoming_dir]
+    r1, c1 = r + dr, c + dc
+    if not _in_bounds(grid, r1, c1):
+        return False
+    if grid[r1][c1] not in DIR_MAP:
+        return False
+    if not (dirs(grid[r1][c1]) & _opposite(incoming_dir)):
+        return False
+
+    visited: set[tuple[int, int]] = set()
+    cur_r, cur_c = r1, c1
+    travel_dir = incoming_dir
+    max_steps = (len(grid) * len(grid[0])) + 1 if grid else 1
+
+    for _ in range(max_steps):
+        if (cur_r, cur_c) in visited:
+            # Closed loop / revisited component => not dangling.
+            return True
+        visited.add((cur_r, cur_c))
+
+        back_dir = _opposite(travel_dir)
+        next_candidates: list[tuple[int, int, int]] = []
+        for direction in (N, E, S, W):
+            if direction == back_dir:
+                continue
+            if not (dirs(grid[cur_r][cur_c]) & direction):
+                continue
+            dr2, dc2 = DIR_STEPS[direction]
+            r2, c2 = cur_r + dr2, cur_c + dc2
+            if not _in_bounds(grid, r2, c2):
+                continue
+            if grid[r2][c2] in DIR_MAP and connected(grid, cur_r, cur_c, dr2, dc2):
+                next_candidates.append((direction, r2, c2))
+
+        if len(next_candidates) >= 2:
+            # Branching source component is considered anchored.
+            return True
+        if len(next_candidates) == 1:
+            travel_dir, cur_r, cur_c = next_candidates[0]
+            continue
+
+        # No mutual continuation. Allow endpoint if it attaches to a plain box wall.
+        if travel_dir in (E, W) and _has_label_bridge_horizontal(grid, cur_r, cur_c, travel_dir):
+            return True
+        if travel_dir in (N, S) and _has_label_bridge_vertical(grid, cur_r, cur_c, travel_dir):
+            return True
+
+        # No mutual continuation. Allow endpoint if it attaches to a plain box wall.
+        for direction in (N, E, S, W):
+            if direction == back_dir:
+                continue
+            if not (dirs(grid[cur_r][cur_c]) & direction):
+                continue
+            dr2, dc2 = DIR_STEPS[direction]
+            r2, c2 = cur_r + dr2, cur_c + dc2
+            if _in_bounds(grid, r2, c2) and _is_plain_wall_attachment(direction, grid[r2][c2]):
+                return True
+        return False
+
+    return False
+
+
 def _count_arrow_errors(grid: List[List[str]]) -> int:
     arrow_errors = 0
 
@@ -678,15 +909,70 @@ def _count_arrow_errors(grid: List[List[str]]) -> int:
                 arrow_errors += 1
                 continue
 
-            # Up arrows should point at a visible target above, not empty space.
-            if ch in {"▲", "^"}:
-                out_dir = _opposite(expected)
-                dr, dc = DIR_STEPS[out_dir]
-                r2, c2 = r + dr, c + dc
-                if _in_bounds(grid, r2, c2) and grid[r2][c2] == " ":
-                    arrow_errors += 1
+            if not _arrow_outgoing_target_valid(grid, r, c, ch):
+                arrow_errors += 1
+                continue
+
+            if not _arrow_source_is_anchored(grid, r, c, expected):
+                arrow_errors += 1
 
     return arrow_errors
+
+
+def _count_vertical_stack_centering_errors(grid: List[List[str]], valid_boxes: list[_Box]) -> int:
+    """
+    Detect off-axis vertical flow columns in long single-column stacks.
+
+    This targets diagrams where multiple boxes are stacked with identical edges,
+    but arrows/shafts run consistently away from the box center.
+    """
+    if not grid or not valid_boxes:
+        return 0
+
+    by_span: dict[tuple[int, int], list[_Box]] = {}
+    for box in valid_boxes:
+        by_span.setdefault((box.c0, box.c1), []).append(box)
+
+    errors = 0
+    for c0_c1, boxes in by_span.items():
+        c0, c1 = c0_c1
+        boxes = sorted(boxes, key=lambda b: b.top_row)
+        if len(boxes) < 3:
+            continue
+
+        s = c0 + c1
+        centers = {(s // 2)} if s % 2 == 0 else {(s // 2), (s // 2) + 1}
+
+        for i in range(len(boxes) - 1):
+            upper = boxes[i]
+            lower = boxes[i + 1]
+            if lower.top_row <= upper.bottom_row:
+                continue
+
+            gap_start = upper.bottom_row + 1
+            gap_end = lower.top_row - 1
+            if gap_start > gap_end:
+                continue
+
+            cols: set[int] = set()
+            saw_arrow = False
+            for r in range(gap_start, gap_end + 1):
+                for c, ch in enumerate(grid[r]):
+                    if ch in {"│", "▲", "▼", "^", "v"}:
+                        cols.add(c)
+                    if ch in {"▲", "▼", "^", "v"}:
+                        saw_arrow = True
+
+            if not saw_arrow:
+                continue
+            if len(cols) != 1:
+                continue
+
+            flow_col = next(iter(cols))
+            if flow_col not in centers:
+                errors += 1
+
+    return errors
 
 
 def detect_misaligned(diagram: str, require_at_least_one_rect: bool = True) -> Dict[str, int]:
@@ -703,8 +989,9 @@ def detect_misaligned(diagram: str, require_at_least_one_rect: bool = True) -> D
     """
     grid = normalize_grid(diagram)
 
-    correct_rectangles, rectangle_errors = _detect_rectangles(grid)
+    correct_rectangles, rectangle_errors, _consumed_box_cells, valid_boxes = _detect_rectangles(grid)
     connector_errors = _count_connector_errors(grid)
+    connector_errors += _count_vertical_stack_centering_errors(grid, valid_boxes)
     arrow_errors = _count_arrow_errors(grid)
 
     if require_at_least_one_rect and correct_rectangles == 0:
