@@ -1,0 +1,32 @@
+name = "ascii-layout-alpha-128-qwen3-4b-instruct-2507-difficulty-filter"
+model = "Qwen/Qwen3-4B-Instruct-2507"
+max_steps = 300
+batch_size = 512
+rollouts_per_example = 16
+trajectory_strategy = "interleaved"
+learning_rate = 1e-6
+lora_alpha = 128
+
+[sampling]
+max_tokens = 5000
+
+[[env]]
+id = "13point5/ascii-align"
+
+[val]
+num_examples = 32
+rollouts_per_example = 3
+interval = 10
+
+[wandb]
+project = "ascii-align"
+name = "ascii-layout-alpha-128-qwen3-4b-instruct-2507-difficulty-filter"
+entity = "13point5-labs"
+
+[buffer]
+online_difficulty_filtering = true
+easy_threshold = 0.8
+hard_threshold = 0.2
+easy_fraction = 0.0
+hard_fraction = 0.0
+seed = 42
