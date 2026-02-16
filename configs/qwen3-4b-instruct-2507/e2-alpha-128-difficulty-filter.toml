@@ -6,6 +6,8 @@ rollouts_per_example = 16
 trajectory_strategy = "interleaved"
 learning_rate = 1e-6
 lora_alpha = 128
+oversampling_factor = 2.0
+max_async_level = 4
 
 [sampling]
 max_tokens = 5000
