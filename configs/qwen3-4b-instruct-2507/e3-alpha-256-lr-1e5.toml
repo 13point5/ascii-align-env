@@ -1,11 +1,11 @@
-name = "ascii-e2-alpha-64-qwen3-4b-instruct-2507-index-test"
+name = "ascii-layout-alpha-256-qwen3-4b-instruct-2507-lr-2e6"
 model = "Qwen/Qwen3-4B-Instruct-2507"
 max_steps = 300
 batch_size = 512
 rollouts_per_example = 16
 trajectory_strategy = "interleaved"
-learning_rate = 1e-6
-lora_alpha = 64
+learning_rate = 1e-5
+lora_alpha = 256
 
 [sampling]
 max_tokens = 5000
@@ -20,5 +20,5 @@ interval = 10
 
 [wandb]
 project = "ascii-align"
-name = "ascii-e2-alpha-64-qwen3-4b-instruct-2507"
+name = "ascii-layout-alpha-256-qwen3-4b-instruct-2507-lr-2e6"
 entity = "13point5-labs"

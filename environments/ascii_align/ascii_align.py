@@ -245,8 +245,10 @@ def load_environment() -> vf.Environment:
     """
     Single-turn environment that asks for ASCII diagrams inside ```text fences.
     """
-
     dataset = load_dataset("13point5/tldraw-vf-env", split="train")
+
+    # Keep a stable ID tied to original dataset row order.
+    dataset = dataset.map(lambda _row, idx: {"source_index": idx}, with_indices=True)
 
     # convert prompt into an array with one user message object
     dataset = dataset.map(lambda row: {"prompt": [{"role": "user", "content": row["prompt"]}]})
@@ -260,6 +262,18 @@ def load_environment() -> vf.Environment:
     split = dataset.train_test_split(test_size=0.2, seed=42, shuffle=True)
     train_dataset = split["train"]
     eval_dataset = split["test"]
+
+    # Track final train ordering so runs/resumes can be compared in the web app.
+    train_dataset = train_dataset.map(
+        lambda row, idx: {
+            "info": {
+                **dict(row["info"]),
+                "source_index": row["info"]["source_index"],
+                "train_order_index": idx,
+            }
+        },
+        with_indices=True,
+    )
 
     rubric = vf.Rubric(
         funcs=[
