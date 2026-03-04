@@ -199,11 +199,15 @@ name = "ascii-align"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "openai" },
     { name = "verifiers" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "verifiers", specifier = ">=0.1.9.post3" }]
+requires-dist = [
+    { name = "openai", specifier = ">=2.16.0" },
+    { name = "verifiers", specifier = ">=0.1.9.post3" },
+]
 
 [[package]]
 name = "async-timeout"
