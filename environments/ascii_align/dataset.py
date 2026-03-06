@@ -206,11 +206,12 @@ OUTPUT_RULES = [
     "The tone of the output should be like a user prompt that a human would write to an LLM to draw a diagram.",
 ]
 
-SHAPE_BUDGETS = [4, 6, 8, 10, 12, 16, 20]
-
 
 def get_example_prompts() -> List[str]:
     return [example for theme in THEMES for example in theme["examples"]]
+
+
+SHAPE_BUDGETS = [4, 6, 8, 10, 12, 16, 20]
 
 
 def complexity_hint(budget: int) -> str:

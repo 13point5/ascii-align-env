@@ -1,3 +1,3 @@
-# React + TypeScript + Vite + shadcn/ui
+# RL Studio
 
-This is a template for a new Vite project with React, TypeScript, and shadcn/ui.
+Rollout explorer and reward-algorithm visualizer for the ASCII align environment.

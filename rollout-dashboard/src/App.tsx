@@ -2,7 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -91,7 +97,9 @@ function getDefaultSteps(run: Run | null, preferredSteps: number[]) {
     .filter((step) => Number.isFinite(step))
     .sort((a, b) => a - b);
 
-  const preferred = preferredSteps.filter((step) => availableSteps.includes(step));
+  const preferred = preferredSteps.filter((step) =>
+    availableSteps.includes(step),
+  );
   if (preferred.length > 0) return preferred;
   if (availableSteps.length > 3) return availableSteps.slice(-3);
   return availableSteps;
@@ -104,23 +112,35 @@ function getDefaultStep(run: Run | null, preferredSteps: number[]) {
 
 function getSystemTheme(): ResolvedTheme {
   if (typeof window === "undefined") return "light";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
 }
 
 function getStoredThemePreference(): ThemePreference {
   if (typeof window === "undefined") return "system";
   const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
-  return stored === "light" || stored === "dark" || stored === "system" ? stored : "system";
+  return stored === "light" || stored === "dark" || stored === "system"
+    ? stored
+    : "system";
 }
 
-function formatThemeLabel(preference: ThemePreference, systemTheme: ResolvedTheme) {
+function formatThemeLabel(
+  preference: ThemePreference,
+  systemTheme: ResolvedTheme,
+) {
   if (preference === "system") return `System (${systemTheme})`;
   return preference === "dark" ? "Dark" : "Light";
 }
 
-function getRewardColorClass(reward: number | null | undefined, runMaxReward: number | null) {
-  if (typeof reward !== "number" || Number.isNaN(reward)) return "text-muted-foreground";
-  if (runMaxReward === null || runMaxReward <= 0) return "text-muted-foreground";
+function getRewardColorClass(
+  reward: number | null | undefined,
+  runMaxReward: number | null,
+) {
+  if (typeof reward !== "number" || Number.isNaN(reward))
+    return "text-muted-foreground";
+  if (runMaxReward === null || runMaxReward <= 0)
+    return "text-muted-foreground";
 
   const ratio = reward / runMaxReward;
   if (ratio >= 0.85) return "text-emerald-600 dark:text-emerald-400";
@@ -128,7 +148,11 @@ function getRewardColorClass(reward: number | null | undefined, runMaxReward: nu
   return "text-red-600 dark:text-red-400";
 }
 
-function getRolloutSelectionKey(runId: string, step: number, rolloutId: string) {
+function getRolloutSelectionKey(
+  runId: string,
+  step: number,
+  rolloutId: string,
+) {
   return `${runId}::${step}::${rolloutId}`;
 }
 
@@ -136,12 +160,20 @@ export function App() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [selectedRunId, setSelectedRunId] = useState<string>("");
   const [selectedStep, setSelectedStep] = useState<number | null>(null);
-  const [themePreference, setThemePreference] = useState<ThemePreference>(() => getStoredThemePreference());
-  const [systemTheme, setSystemTheme] = useState<ResolvedTheme>(() => getSystemTheme());
+  const [themePreference, setThemePreference] = useState<ThemePreference>(() =>
+    getStoredThemePreference(),
+  );
+  const [systemTheme, setSystemTheme] = useState<ResolvedTheme>(() =>
+    getSystemTheme(),
+  );
   const [dialogData, setDialogData] = useState<RolloutDialogState>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedRollouts, setSelectedRollouts] = useState<Record<string, SelectedRolloutEntry>>({});
-  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
+  const [selectedRollouts, setSelectedRollouts] = useState<
+    Record<string, SelectedRolloutEntry>
+  >({});
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">(
+    "idle",
+  );
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -149,7 +181,8 @@ export function App() {
     let mounted = true;
     fetch("/mock-data.json")
       .then(async (res) => {
-        if (!res.ok) throw new Error(`Failed to load mock-data.json (${res.status})`);
+        if (!res.ok)
+          throw new Error(`Failed to load mock-data.json (${res.status})`);
         return (await res.json()) as DashboardData;
       })
       .then((json) => {
@@ -186,7 +219,8 @@ export function App() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(THEME_STORAGE_KEY, themePreference);
-    const resolvedTheme = themePreference === "system" ? systemTheme : themePreference;
+    const resolvedTheme =
+      themePreference === "system" ? systemTheme : themePreference;
     document.documentElement.classList.toggle("dark", resolvedTheme === "dark");
   }, [themePreference, systemTheme]);
 
@@ -205,7 +239,8 @@ export function App() {
 
   const effectiveStep = useMemo(() => {
     if (availableSteps.length === 0) return null;
-    if (selectedStep !== null && availableSteps.includes(selectedStep)) return selectedStep;
+    if (selectedStep !== null && availableSteps.includes(selectedStep))
+      return selectedStep;
     return availableSteps[availableSteps.length - 1];
   }, [availableSteps, selectedStep]);
 
@@ -220,7 +255,9 @@ export function App() {
     return {
       step: effectiveStep,
       summary: selectedRun.step_summary[String(effectiveStep)],
-      rollouts: [...(selectedRun.rollouts_by_step[String(effectiveStep)] || [])],
+      rollouts: [
+        ...(selectedRun.rollouts_by_step[String(effectiveStep)] || []),
+      ],
     };
   }, [selectedRun, effectiveStep]);
 
@@ -229,13 +266,19 @@ export function App() {
 
     const fromStepSummary = Object.values(selectedRun.step_summary || {})
       .map((summary) => summary?.reward_max)
-      .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+      .filter(
+        (value): value is number =>
+          typeof value === "number" && Number.isFinite(value),
+      );
     if (fromStepSummary.length > 0) return Math.max(...fromStepSummary);
 
     const fromRollouts = Object.values(selectedRun.rollouts_by_step || {})
       .flat()
       .map((rollout) => rollout?.reward)
-      .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+      .filter(
+        (value): value is number =>
+          typeof value === "number" && Number.isFinite(value),
+      );
     if (fromRollouts.length > 0) return Math.max(...fromRollouts);
 
     return null;
@@ -250,7 +293,11 @@ export function App() {
 
     let selected = 0;
     for (const rollout of activeGroup.rollouts) {
-      const key = getRolloutSelectionKey(selectedRun.id, activeGroup.step, rollout.id);
+      const key = getRolloutSelectionKey(
+        selectedRun.id,
+        activeGroup.step,
+        rollout.id,
+      );
       if (selectedRollouts[key]) selected += 1;
     }
 
@@ -262,7 +309,12 @@ export function App() {
     };
   }, [selectedRun, activeGroup, selectedRollouts]);
 
-  function toggleRolloutSelection(run: Run, step: number, rollout: Rollout, checked: boolean) {
+  function toggleRolloutSelection(
+    run: Run,
+    step: number,
+    rollout: Rollout,
+    checked: boolean,
+  ) {
     const key = getRolloutSelectionKey(run.id, step, rollout.id);
     setSelectedRollouts((current) => {
       const next = { ...current };
@@ -287,7 +339,11 @@ export function App() {
       const next = { ...current };
       const shouldSelect = !visibleSelection.allSelected;
       for (const rollout of activeGroup.rollouts) {
-        const key = getRolloutSelectionKey(selectedRun.id, activeGroup.step, rollout.id);
+        const key = getRolloutSelectionKey(
+          selectedRun.id,
+          activeGroup.step,
+          rollout.id,
+        );
         if (shouldSelect) {
           next[key] = {
             run_id: selectedRun.id,
@@ -313,7 +369,7 @@ export function App() {
 
     const runById = new Map((data?.runs || []).map((run) => [run.id, run]));
     const lines: string[] = [];
-    lines.push("# RL Rollout Export");
+    lines.push("# RL Studio Export");
     lines.push(`Exported At: ${new Date().toISOString()}`);
     lines.push(`Selected Rollouts: ${items.length}`);
     lines.push("");
@@ -345,7 +401,9 @@ export function App() {
       lines.push("");
 
       const runItems = items.filter((item) => item.run_id === runId);
-      const stepGroups = [...new Set(runItems.map((item) => item.step))].sort((a, b) => a - b);
+      const stepGroups = [...new Set(runItems.map((item) => item.step))].sort(
+        (a, b) => a - b,
+      );
 
       for (const step of stepGroups) {
         lines.push(`### Checkpoint ${step}`);
@@ -353,7 +411,9 @@ export function App() {
 
         const stepItems = runItems
           .filter((item) => item.step === step)
-          .sort((a, b) => (a.rollout.sample_id ?? 0) - (b.rollout.sample_id ?? 0));
+          .sort(
+            (a, b) => (a.rollout.sample_id ?? 0) - (b.rollout.sample_id ?? 0),
+          );
 
         stepItems.forEach((item, index) => {
           const messages = item.rollout.messages || {};
@@ -410,7 +470,11 @@ export function App() {
   }
 
   if (loading) {
-    return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading dashboard...</div>;
+    return (
+      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
+        Loading dashboard...
+      </div>
+    );
   }
 
   if (loadError || !data) {
@@ -419,7 +483,9 @@ export function App() {
         <Card className="w-full border py-0">
           <CardHeader className="pt-4">
             <CardTitle>Failed to load dashboard data</CardTitle>
-            <CardDescription>{loadError || "No data available."}</CardDescription>
+            <CardDescription>
+              {loadError || "No data available."}
+            </CardDescription>
           </CardHeader>
         </Card>
       </div>
@@ -430,7 +496,9 @@ export function App() {
     <div className="min-h-screen bg-muted/30">
       <div className="mx-auto max-w-[1900px] p-4 md:p-6">
         <header className="mb-3 flex items-center justify-between gap-3">
-          <h1 className="text-sm font-semibold tracking-tight md:text-base">RL Rollouts</h1>
+          <h1 className="text-sm font-semibold tracking-tight md:text-base">
+            RL Studio
+          </h1>
           <Button
             type="button"
             size="xs"
@@ -451,7 +519,8 @@ export function App() {
             <div className="border-b px-4 py-3">
               <h2 className="text-sm font-semibold">Runs</h2>
               <p className="text-xs text-muted-foreground">
-                {data.runs.length} runs · data snapshot {data.generated_at || "n/a"}
+                {data.runs.length} runs · data snapshot{" "}
+                {data.generated_at || "n/a"}
               </p>
             </div>
             <div className="max-h-[calc(100vh-170px)] space-y-2 overflow-auto p-2">
@@ -463,7 +532,9 @@ export function App() {
                     type="button"
                     onClick={() => {
                       setSelectedRunId(run.id);
-                      setSelectedStep(getDefaultStep(run, data.selected_steps || []));
+                      setSelectedStep(
+                        getDefaultStep(run, data.selected_steps || []),
+                      );
                     }}
                     className={cn(
                       "block w-full text-left transition",
@@ -473,7 +544,9 @@ export function App() {
                     <Card
                       className={cn(
                         "border py-0",
-                        selected ? "border-primary/70 bg-primary/5" : "border-border bg-card",
+                        selected
+                          ? "border-primary/70 bg-primary/5"
+                          : "border-border bg-card",
                       )}
                     >
                       <CardHeader className="pt-3 pb-2">
@@ -489,18 +562,27 @@ export function App() {
                               {shortRunName(run.name)}
                             </a>
                           </CardTitle>
-                          <Badge variant={selected ? "default" : "outline"} className="text-[10px]">
+                          <Badge
+                            variant={selected ? "default" : "outline"}
+                            className="text-[10px]"
+                          >
                             {run.status.toLowerCase()}
                           </Badge>
                         </div>
-                        <CardDescription className="line-clamp-1 text-[11px]">{run.model}</CardDescription>
+                        <CardDescription className="line-clamp-1 text-[11px]">
+                          {run.model}
+                        </CardDescription>
                       </CardHeader>
                       <CardContent className="pb-3">
                         <div className="grid grid-cols-2 gap-1 text-[11px] text-muted-foreground">
                           <span>env</span>
-                          <span className="truncate text-right text-foreground">{run.environment}</span>
+                          <span className="truncate text-right text-foreground">
+                            {run.environment}
+                          </span>
                           <span>max steps</span>
-                          <span className="text-right text-foreground">{run.max_steps}</span>
+                          <span className="text-right text-foreground">
+                            {run.max_steps}
+                          </span>
                         </div>
                       </CardContent>
                     </Card>
@@ -526,10 +608,13 @@ export function App() {
                       </a>
                     </CardTitle>
                     <CardDescription className="text-[11px]">
-                      {selectedRun.id} · {selectedRun.environment} · {selectedRun.model}
+                      {selectedRun.id} · {selectedRun.environment} ·{" "}
+                      {selectedRun.model}
                     </CardDescription>
                     <div className="mt-2">
-                      <p className="mb-2 text-xs text-muted-foreground">Checkpoints</p>
+                      <p className="mb-2 text-xs text-muted-foreground">
+                        Checkpoints
+                      </p>
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <Button
@@ -539,7 +624,9 @@ export function App() {
                             disabled={effectiveStepIndex <= 0}
                             onClick={() => {
                               if (effectiveStepIndex <= 0) return;
-                              setSelectedStep(availableSteps[effectiveStepIndex - 1] ?? null);
+                              setSelectedStep(
+                                availableSteps[effectiveStepIndex - 1] ?? null,
+                              );
                             }}
                           >
                             Prev
@@ -548,17 +635,28 @@ export function App() {
                             type="button"
                             variant="outline"
                             size="xs"
-                            disabled={effectiveStepIndex >= availableSteps.length - 1}
+                            disabled={
+                              effectiveStepIndex >= availableSteps.length - 1
+                            }
                             onClick={() => {
-                              if (effectiveStepIndex >= availableSteps.length - 1) return;
-                              setSelectedStep(availableSteps[effectiveStepIndex + 1] ?? null);
+                              if (
+                                effectiveStepIndex >=
+                                availableSteps.length - 1
+                              )
+                                return;
+                              setSelectedStep(
+                                availableSteps[effectiveStepIndex + 1] ?? null,
+                              );
                             }}
                           >
                             Next
                           </Button>
                           <span className="text-xs text-muted-foreground">
-                            step {effectiveStep ?? "n/a"} ({availableSteps.length === 0 ? 0 : effectiveStepIndex + 1}/
-                            {availableSteps.length})
+                            step {effectiveStep ?? "n/a"} (
+                            {availableSteps.length === 0
+                              ? 0
+                              : effectiveStepIndex + 1}
+                            /{availableSteps.length})
                           </span>
                         </div>
                         <input
@@ -578,16 +676,22 @@ export function App() {
                   </CardHeader>
                   <CardContent className="pb-3 pt-0">
                     <div className="space-y-2">
-                      <p className="text-[11px] text-muted-foreground">Select rollouts and copy them into Codex context.</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        Select rollouts and copy them into Codex context.
+                      </p>
                       <div className="flex flex-wrap items-center gap-2">
                         <Button
                           type="button"
                           size="xs"
                           variant="outline"
                           onClick={toggleVisibleSelection}
-                          disabled={!activeGroup || activeGroup.rollouts.length === 0}
+                          disabled={
+                            !activeGroup || activeGroup.rollouts.length === 0
+                          }
                         >
-                          {visibleSelection.allSelected ? "Unselect Visible" : "Select Visible"}
+                          {visibleSelection.allSelected
+                            ? "Unselect Visible"
+                            : "Select Visible"}
                         </Button>
                         <Button
                           type="button"
@@ -601,17 +705,27 @@ export function App() {
                         >
                           Clear Selected
                         </Button>
-                        <Button type="button" size="xs" onClick={copySelectedRollouts} disabled={selectedCount === 0}>
+                        <Button
+                          type="button"
+                          size="xs"
+                          onClick={copySelectedRollouts}
+                          disabled={selectedCount === 0}
+                        >
                           Copy Selected ({selectedCount})
                         </Button>
                         <span className="text-[11px] text-muted-foreground">
-                          Visible selected: {visibleSelection.selected}/{visibleSelection.total}
+                          Visible selected: {visibleSelection.selected}/
+                          {visibleSelection.total}
                         </span>
                         {copyStatus === "copied" ? (
-                          <span className="text-[11px] text-emerald-600 dark:text-emerald-400">Copied.</span>
+                          <span className="text-[11px] text-emerald-600 dark:text-emerald-400">
+                            Copied.
+                          </span>
                         ) : null}
                         {copyStatus === "error" ? (
-                          <span className="text-[11px] text-red-600 dark:text-red-400">Copy failed.</span>
+                          <span className="text-[11px] text-red-600 dark:text-red-400">
+                            Copy failed.
+                          </span>
                         ) : null}
                       </div>
                     </div>
@@ -622,13 +736,26 @@ export function App() {
                   <Card key={activeGroup.step} className="border py-0">
                     <CardHeader className="pt-4 pb-3">
                       <div className="flex items-center justify-between gap-2">
-                        <CardTitle className="text-sm">Checkpoint step {activeGroup.step}</CardTitle>
-                        <Badge variant="outline">{activeGroup.rollouts.length} rollouts</Badge>
+                        <CardTitle className="text-sm">
+                          Checkpoint step {activeGroup.step}
+                        </CardTitle>
+                        <Badge variant="outline">
+                          {activeGroup.rollouts.length} rollouts
+                        </Badge>
                       </div>
                       <CardDescription className="flex flex-wrap items-center gap-3 text-[11px]">
-                        <span>mean reward: {formatNumber(activeGroup.summary?.reward_mean)}</span>
-                        <span>misaligned mean: {formatNumber(activeGroup.summary?.misaligned_mean)}</span>
-                        <span>alignment mean: {formatNumber(activeGroup.summary?.alignment_mean)}</span>
+                        <span>
+                          mean reward:{" "}
+                          {formatNumber(activeGroup.summary?.reward_mean)}
+                        </span>
+                        <span>
+                          misaligned mean:{" "}
+                          {formatNumber(activeGroup.summary?.misaligned_mean)}
+                        </span>
+                        <span>
+                          alignment mean:{" "}
+                          {formatNumber(activeGroup.summary?.alignment_mean)}
+                        </span>
                       </CardDescription>
                     </CardHeader>
 
@@ -640,20 +767,32 @@ export function App() {
                       ) : (
                         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                           {activeGroup.rollouts.map((rollout) => {
-                            const rewardColorClass = getRewardColorClass(rollout.reward, runMaxReward);
-                            const selectionKey = getRolloutSelectionKey(selectedRun.id, activeGroup.step, rollout.id);
-                            const isSelected = Boolean(selectedRollouts[selectionKey]);
-                            const assistantText = rollout.messages?.assistant || "";
+                            const rewardColorClass = getRewardColorClass(
+                              rollout.reward,
+                              runMaxReward,
+                            );
+                            const selectionKey = getRolloutSelectionKey(
+                              selectedRun.id,
+                              activeGroup.step,
+                              rollout.id,
+                            );
+                            const isSelected = Boolean(
+                              selectedRollouts[selectionKey],
+                            );
+                            const assistantText =
+                              rollout.messages?.assistant || "";
                             return (
-                              <div
-                                key={rollout.id}
-                                className="relative"
-                              >
+                              <div key={rollout.id} className="relative">
                                 <div className="absolute left-2 top-2 z-10">
                                   <Checkbox
                                     checked={isSelected}
                                     onCheckedChange={(checked) => {
-                                      toggleRolloutSelection(selectedRun, activeGroup.step, rollout, checked === true);
+                                      toggleRolloutSelection(
+                                        selectedRun,
+                                        activeGroup.step,
+                                        rollout,
+                                        checked === true,
+                                      );
                                     }}
                                     onClick={(event) => event.stopPropagation()}
                                     aria-label={`Select rollout ${rollout.id}`}
@@ -663,27 +802,43 @@ export function App() {
                                   role="button"
                                   tabIndex={0}
                                   onClick={() => {
-                                    setDialogData({ run: selectedRun, step: activeGroup.step, rollout });
+                                    setDialogData({
+                                      run: selectedRun,
+                                      step: activeGroup.step,
+                                      rollout,
+                                    });
                                     setDialogOpen(true);
                                   }}
                                   onKeyDown={(event) => {
-                                    if (event.key === "Enter" || event.key === " ") {
+                                    if (
+                                      event.key === "Enter" ||
+                                      event.key === " "
+                                    ) {
                                       event.preventDefault();
-                                      setDialogData({ run: selectedRun, step: activeGroup.step, rollout });
+                                      setDialogData({
+                                        run: selectedRun,
+                                        step: activeGroup.step,
+                                        rollout,
+                                      });
                                       setDialogOpen(true);
                                     }
                                   }}
                                   className={cn(
                                     "h-full cursor-pointer border border-border py-0 transition hover:border-primary/70",
-                                    isSelected ? "border-primary ring-1 ring-primary/30" : "",
+                                    isSelected
+                                      ? "border-primary ring-1 ring-primary/30"
+                                      : "",
                                   )}
                                 >
                                   <CardContent className="p-3">
                                     <div className="mb-2 text-right font-mono text-xs font-semibold">
-                                      <span className={rewardColorClass}>{formatNumber(rollout.reward)}</span>
+                                      <span className={rewardColorClass}>
+                                        {formatNumber(rollout.reward)}
+                                      </span>
                                     </div>
                                     <pre className="max-h-96 overflow-auto whitespace-pre font-mono text-[11px] leading-relaxed [font-variant-ligatures:none]">
-                                      {assistantText || "(empty assistant output)"}
+                                      {assistantText ||
+                                        "(empty assistant output)"}
                                     </pre>
                                   </CardContent>
                                 </Card>
@@ -706,7 +861,9 @@ export function App() {
               <Card className="border py-0">
                 <CardHeader className="pt-4">
                   <CardTitle>Select a run</CardTitle>
-                  <CardDescription>Choose a run from the left list to view rollout cards.</CardDescription>
+                  <CardDescription>
+                    Choose a run from the left list to view rollout cards.
+                  </CardDescription>
                 </CardHeader>
               </Card>
             )}
@@ -728,7 +885,8 @@ export function App() {
                     {shortRunName(dialogData.run.name)} · step {dialogData.step}
                   </DialogTitle>
                   <DialogDescription className="text-[11px]">
-                    sample {dialogData.rollout.sample_id ?? "?"} · problem {dialogData.rollout.problem_id ?? "?"}
+                    sample {dialogData.rollout.sample_id ?? "?"} · problem{" "}
+                    {dialogData.rollout.problem_id ?? "?"}
                   </DialogDescription>
                 </DialogHeader>
 
@@ -736,33 +894,42 @@ export function App() {
                   <div className="space-y-4">
                     <Card className="border py-0">
                       <CardHeader className="pt-3 pb-2">
-                        <CardTitle className="text-xs">Reward Details</CardTitle>
+                        <CardTitle className="text-xs">
+                          Reward Details
+                        </CardTitle>
                         <CardDescription className="text-[11px]">
-                          total reward: {formatNumber(dialogData.rollout.reward)}
+                          total reward:{" "}
+                          {formatNumber(dialogData.rollout.reward)}
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="pb-3">
                         <pre className="overflow-auto whitespace-pre-wrap border bg-muted/40 p-2 text-[11px] leading-relaxed">
-{JSON.stringify(
-  {
-    reward: dialogData.rollout.reward,
-    metrics: dialogData.rollout.metrics || {},
-    timing_ms: dialogData.rollout.timing_ms || {},
-  },
-  null,
-  2,
-)}
+                          {JSON.stringify(
+                            {
+                              reward: dialogData.rollout.reward,
+                              metrics: dialogData.rollout.metrics || {},
+                              timing_ms: dialogData.rollout.timing_ms || {},
+                            },
+                            null,
+                            2,
+                          )}
                         </pre>
                       </CardContent>
                     </Card>
 
                     <Card className="border py-0">
                       <CardHeader className="pt-3 pb-2">
-                        <CardTitle className="text-xs">Info Object (JSON)</CardTitle>
+                        <CardTitle className="text-xs">
+                          Info Object (JSON)
+                        </CardTitle>
                       </CardHeader>
                       <CardContent className="pb-3">
                         <pre className="max-h-[340px] overflow-auto whitespace-pre-wrap border bg-muted/40 p-2 text-[11px] leading-relaxed">
-{JSON.stringify(dialogData.rollout.info || {}, null, 2)}
+                          {JSON.stringify(
+                            dialogData.rollout.info || {},
+                            null,
+                            2,
+                          )}
                         </pre>
                       </CardContent>
                     </Card>
@@ -771,7 +938,9 @@ export function App() {
                   <div className="space-y-4">
                     <Card className="border py-0">
                       <CardHeader className="pt-3 pb-2">
-                        <CardTitle className="text-xs">System Message</CardTitle>
+                        <CardTitle className="text-xs">
+                          System Message
+                        </CardTitle>
                       </CardHeader>
                       <CardContent className="pb-3">
                         <pre className="max-h-[220px] overflow-auto whitespace-pre-wrap border bg-muted/40 p-2 text-[11px] leading-relaxed">
@@ -793,11 +962,14 @@ export function App() {
 
                     <Card className="border py-0">
                       <CardHeader className="pt-3 pb-2">
-                        <CardTitle className="text-xs">Assistant Completion</CardTitle>
+                        <CardTitle className="text-xs">
+                          Assistant Completion
+                        </CardTitle>
                       </CardHeader>
                       <CardContent className="pb-3">
                         <pre className="max-h-[260px] overflow-auto whitespace-pre border bg-muted/40 p-2 font-mono text-[11px] leading-relaxed [font-variant-ligatures:none]">
-                          {dialogData.rollout.messages?.assistant || "(empty assistant output)"}
+                          {dialogData.rollout.messages?.assistant ||
+                            "(empty assistant output)"}
                         </pre>
                       </CardContent>
                     </Card>

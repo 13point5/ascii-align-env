@@ -241,7 +241,7 @@ def merge_runs(existing: dict[str, Any], incoming: list[dict[str, Any]]) -> dict
         existing["generated_at"] = max(str(v) for v in completed_values)
 
     if "title" not in existing:
-        existing["title"] = "Prime RL Rollout Inspector Prototype"
+        existing["title"] = "RL Studio"
     if "selected_steps" not in existing or not isinstance(existing["selected_steps"], list):
         existing["selected_steps"] = []
 
@@ -284,7 +284,7 @@ def main() -> int:
     else:
         existing = {
             "generated_at": None,
-            "title": "Prime RL Rollout Inspector Prototype",
+            "title": "RL Studio",
             "selected_steps": [],
             "runs": [],
         }
@@ -306,4 +306,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-
