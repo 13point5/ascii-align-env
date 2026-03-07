@@ -1,0 +1,4 @@
+[qwen3-4b-e3-alpha-256]
+description = "Qwen3 4B Instruct 2507 ASCII align run with alpha 256"
+config = "rlx-configs/qwen3-4b-instruct-2507-e3-alpha-256-local.toml"
+env_path = "environments/ascii_align"
