@@ -1,24 +1,41 @@
-name = "ascii-layout-alpha-256-qwen3-4b-instruct-2507"
-model = "Qwen/Qwen3-4B-Instruct-2507"
+inference_gpu_ids = [0]
+trainer_gpu_ids = [1]
+
 max_steps = 300
-batch_size = 512
-rollouts_per_example = 16
-trajectory_strategy = "interleaved"
-learning_rate = 1e-6
-lora_alpha = 256
+seq_len = 8192
 
-[sampling]
-max_tokens = 5000
-
-[[env]]
-id = "ascii-align"
-
-[val]
-num_examples = 32
-rollouts_per_example = 3
-interval = 10
+[model]
+name = "Qwen/Qwen3-4B-Instruct-2507"
 
 [wandb]
 project = "ascii-align"
 name = "ascii-layout-alpha-256-qwen3-4b-instruct-2507"
-entity = "13point5-labs"
+
+[trainer.optim]
+lr = 1e-6
+
+[trainer.model.lora]
+alpha = 256
+
+[orchestrator]
+batch_size = 512
+rollouts_per_example = 16
+trajectory_strategy = "interleaved"
+
+[orchestrator.sampling]
+max_tokens = 5000
+
+[[orchestrator.env]]
+id = "ascii-align"
+name = "ascii-align"
+
+[orchestrator.val]
+interval = 10
+num_examples = 32
+rollouts_per_example = 3
+
+[inference]
+gpu_memory_utilization = 0.7
+
+[inference.model]
+max_model_len = 8192
