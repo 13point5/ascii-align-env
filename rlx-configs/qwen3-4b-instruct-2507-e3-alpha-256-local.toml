@@ -1,8 +1,12 @@
-inference_gpu_ids = [0]
-trainer_gpu_ids = [1]
-
 max_steps = 300
 seq_len = 8192
+
+[deployment]
+num_train_gpus = 1
+num_infer_gpus = 1
+gpus_per_node = 2
+
+[ckpt]
 
 [model]
 name = "Qwen/Qwen3-4B-Instruct-2507"
@@ -15,12 +19,12 @@ name = "ascii-layout-alpha-256-qwen3-4b-instruct-2507"
 lr = 1e-6
 
 [trainer.model.lora]
+rank = 16
 alpha = 256
 
 [orchestrator]
 batch_size = 512
 rollouts_per_example = 16
-trajectory_strategy = "interleaved"
 
 [orchestrator.sampling]
 max_tokens = 5000
